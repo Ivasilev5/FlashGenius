@@ -1,0 +1,74 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: flashcard-backend-app
+    env_file:
+      - .env.example
+    ports:
+      - "${APP_PORT-8080}:8080"
+    depends_on:
+      - postgres
+      - redis
+      - minio
+    networks:
+      - flashnet
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: flashcard-postgres
+    environment:
+      POSTGRES_DB: flashcards
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - flashnet
+
+  redis:
+    image: redis:7-alpine
+    container_name: flashcard-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - flashnet
+
+  minio:
+    image: minio/minio:latest
+    container_name: flashcard-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+    networks:
+      - flashnet
+
+  adminer:
+    image: adminer:latest
+    container_name: flashcard-adminer
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+    networks:
+      - flashnet
+
+volumes:
+  pgdata:
+  miniodata:
+
+networks:
+  flashnet:
+    driver: bridge
+
