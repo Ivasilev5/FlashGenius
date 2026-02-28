@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
-import 'core/storage/secure_storage.dart';
 import 'core/theme/app_theme.dart';
 
 class FlashCardApp extends ConsumerWidget {
@@ -10,7 +9,7 @@ class FlashCardApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router = createAppRouter(SecureStorage());
+    final router = createAppRouter();
 
     return MaterialApp.router(
       title: 'FlashCard',

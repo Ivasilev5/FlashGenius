@@ -33,11 +33,31 @@ class DeckCardWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                deck.title,
-                style: Theme.of(context).textTheme.titleMedium,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      deck.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (onDelete != null)
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_horiz),
+                      onSelected: (value) {
+                        if (value == 'delete') onDelete?.call();
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Text('Удалить колоду'),
+                        ),
+                      ],
+                    ),
+                ],
               ),
               const SizedBox(height: AppConstants.spacingSm),
               Text(
@@ -48,7 +68,8 @@ class DeckCardWidget extends StatelessWidget {
                 const SizedBox(height: AppConstants.spacingXs),
                 LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  backgroundColor:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
                 ),
               ],
             ],

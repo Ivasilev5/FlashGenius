@@ -1,14 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../../core/network/dio_client.dart';
 import '../data/models/card_model.dart';
 import '../data/models/review_request.dart';
 import '../data/models/study_stats_model.dart';
 import '../data/study_repository.dart';
 
 final studyRepositoryProvider = Provider<StudyRepository>((ref) {
-  final dio = ref.watch(dioClientProvider);
-  return StudyRepository(dio);
+  return StudyRepository(FirebaseFirestore.instance, FirebaseAuth.instance);
 });
 
 final studyStatsProvider = FutureProvider.autoDispose.family<StudyStatsModel, String>((ref, deckId) async {
@@ -38,12 +38,12 @@ class StudyNotifier extends StateNotifier<AsyncValue<StudyCardModel?>> {
   }
 
   Future<void> submitReview(String cardId, String difficulty, {int? nextReviewIn}) async {
+    if (_deckId == null) return;
     await _repo.submitReview(
+      _deckId!,
       cardId,
       ReviewRequest(difficulty: difficulty, nextReviewIn: nextReviewIn),
     );
-    if (_deckId != null) {
-      await loadNext(_deckId!);
-    }
+    await loadNext(_deckId!);
   }
 }

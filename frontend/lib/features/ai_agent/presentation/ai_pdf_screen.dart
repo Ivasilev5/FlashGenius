@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -23,7 +22,7 @@ class _AiPdfScreenState extends ConsumerState<AiPdfScreen> {
   double _count = 20;
   String _language = 'ru';
   String? _selectedDeckId;
-  Timer? _pollTimer;
+  bool _savingToDeck = false;
 
   @override
   void initState() {
@@ -33,22 +32,7 @@ class _AiPdfScreenState extends ConsumerState<AiPdfScreen> {
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
     super.dispose();
-  }
-
-  void _startPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(
-      Duration(seconds: AppConstants.aiJobPollIntervalSeconds),
-      (_) async {
-        await ref.read(aiPdfStateProvider.notifier).pollJob();
-        final state = ref.read(aiPdfStateProvider);
-        if (state.cards != null || state.status == 'failed') {
-          _pollTimer?.cancel();
-        }
-      },
-    );
   }
 
   Future<void> _pickFile() async {
@@ -65,42 +49,59 @@ class _AiPdfScreenState extends ConsumerState<AiPdfScreen> {
 
   Future<void> _generate() async {
     await ref.read(aiPdfStateProvider.notifier).startGenerate(
-          deckId: _selectedDeckId,
           count: _count.round(),
           language: _language,
         );
-
-    if (mounted && ref.read(aiPdfStateProvider).jobId != null) {
-      _startPolling();
-    }
   }
 
   Future<void> _saveToDeck() async {
+    if (_savingToDeck) return;
     final state = ref.read(aiPdfStateProvider);
     final cards = state.cards;
     if (cards == null || cards.isEmpty) return;
 
-    final deckRepo = ref.read(deckRepositoryProvider);
-    String? deckId = _selectedDeckId;
-    if (deckId == null && ref.read(decksForAiProvider).valueOrNull?.isNotEmpty == true) {
-      deckId = ref.read(decksForAiProvider).valueOrNull!.first.id;
-    }
-    if (deckId == null) {
-      final deck = await deckRepo.createDeck(title: 'ИИ из PDF', description: 'Из файла PDF');
-      deckId = deck.id;
-    }
+    setState(() => _savingToDeck = true);
+    try {
+      final deckRepo = ref.read(deckRepositoryProvider);
+      String? deckId = _selectedDeckId;
+      if (deckId == null &&
+          ref.read(decksForAiProvider).valueOrNull?.isNotEmpty == true) {
+        deckId = ref.read(decksForAiProvider).valueOrNull!.first.id;
+      }
+      if (deckId == null) {
+        final deck = await deckRepo.createDeck(
+            title: 'ИИ из PDF', description: 'Из файла PDF');
+        deckId = deck.id;
+      }
 
-    for (final c in cards) {
-      await deckRepo.createCard(
-        deckId,
-        question: c['question'] ?? '',
-        answer: c['answer'] ?? '',
-      );
-    }
+      for (final c in cards) {
+        await deckRepo.createCard(
+          deckId,
+          question: c['question'] ?? '',
+          answer: c['answer'] ?? '',
+        );
+      }
 
-    ref.invalidate(decksListProvider);
-    ref.read(aiPdfStateProvider.notifier).clear();
-    if (mounted) context.go(AppRoutes.deckDetailPath(deckId));
+      ref.invalidate(decksListProvider);
+      ref.invalidate(deckDetailProvider(deckId));
+      ref.read(aiPdfStateProvider.notifier).clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Карточки сохранены')),
+        );
+        context.go(AppRoutes.deckDetailPath(deckId));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось сохранить: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _savingToDeck = false);
+      }
+    }
   }
 
   @override
@@ -126,12 +127,14 @@ class _AiPdfScreenState extends ConsumerState<AiPdfScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 32),
                 decoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).colorScheme.outline),
+                  border:
+                      Border.all(color: Theme.of(context).colorScheme.outline),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.picture_as_pdf, size: 48, color: Theme.of(context).colorScheme.primary),
+                    Icon(Icons.picture_as_pdf,
+                        size: 48, color: Theme.of(context).colorScheme.primary),
                     const SizedBox(height: 8),
                     Text(
                       aiState.filePath != null
@@ -162,13 +165,19 @@ class _AiPdfScreenState extends ConsumerState<AiPdfScreen> {
               ],
               onChanged: (v) => setState(() => _language = v ?? 'ru'),
             ),
+            const SizedBox(
+              height: 20,
+            ),
             decksAsync.when(
               data: (decks) => DropdownButtonFormField<String>(
                 value: _selectedDeckId,
-                decoration: const InputDecoration(labelText: 'Колода (необязательно)'),
+                decoration:
+                    const InputDecoration(labelText: 'Колода (необязательно)'),
                 items: [
-                  const DropdownMenuItem(value: null, child: Text('— Новая колода —')),
-                  ...decks.map((d) => DropdownMenuItem(value: d.id, child: Text(d.title))),
+                  const DropdownMenuItem(
+                      value: null, child: Text('— Новая колода —')),
+                  ...decks.map((d) =>
+                      DropdownMenuItem(value: d.id, child: Text(d.title))),
                 ],
                 onChanged: (v) => setState(() => _selectedDeckId = v),
               ),
@@ -179,39 +188,58 @@ class _AiPdfScreenState extends ConsumerState<AiPdfScreen> {
             if (aiState.error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(aiState.error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                child: Text(aiState.error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
-            if (aiState.jobId != null && aiState.cards == null && aiState.error == null)
-              GenerationProgressWidget(status: aiState.status),
+            if (aiState.status == 'uploading' &&
+                aiState.cards == null &&
+                aiState.error == null)
+              const GenerationProgressWidget(status: 'Загрузка...'),
             if (aiState.cards != null) ...[
-              Text('Создано карточек: ${aiState.cards!.length}', style: Theme.of(context).textTheme.titleMedium),
+              Text('Создано карточек: ${aiState.cards!.length}',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               ...aiState.cards!.take(10).map((c) => Card(
                     child: ListTile(
                       title: Text((c['question'] ?? '').length > 60
                           ? '${(c['question'] ?? '').substring(0, 60)}...'
                           : c['question'] ?? ''),
-                      subtitle: Text((c['answer'] ?? '').length > 40 ? '${(c['answer'] ?? '').substring(0, 40)}...' : c['answer'] ?? ''),
+                      subtitle: Text((c['answer'] ?? '').length > 40
+                          ? '${(c['answer'] ?? '').substring(0, 40)}...'
+                          : c['answer'] ?? ''),
                     ),
                   )),
-              if (aiState.cards!.length > 10) Text('... и ещё ${aiState.cards!.length - 10}'),
+              if (aiState.cards!.length > 10)
+                Text('... и ещё ${aiState.cards!.length - 10}'),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: _saveToDeck,
+                onPressed: _savingToDeck ? null : _saveToDeck,
                 icon: const Icon(Icons.save),
-                label: const Text('Сохранить в колоду'),
+                label: Text(
+                    _savingToDeck ? 'Сохранение...' : 'Сохранить в колоду'),
               ),
             ],
-            if (aiState.cards == null && aiState.jobId == null)
+            if (aiState.cards == null)
               FilledButton(
-                onPressed: (aiState.status == 'uploading' || aiState.filePath == null) ? null : _generate,
+                style: FilledButton.styleFrom(
+                  minimumSize:
+                      const Size.fromHeight(50), // увеличивает ТОЛЬКО высоту
+                ),
+                onPressed:
+                    (aiState.status == 'uploading' || aiState.filePath == null)
+                        ? null
+                        : _generate,
                 child: aiState.status == 'uploading'
                     ? const SizedBox(
                         height: 24,
                         width: 24,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Создать карточки'),
+                    : const Text(
+                        'Создать карточки',
+                        style: TextStyle(fontSize: 16),
+                      ),
               ),
           ],
         ),

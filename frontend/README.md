@@ -60,6 +60,16 @@ static const String baseUrl = 'http://localhost:8080/api/v1';
 static const String baseUrl = 'http://<IP_вашего_компьютера>:8080/api/v1';
 ```
 
+## Firestore rules (обязательно)
+
+Если на экране колод появляется:
+`[cloud_firestore/permission-denied] The caller does not have permission...`,
+нужно задеплоить правила из `firestore.rules`:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
 ## Запуск приложения
 
 ```bash

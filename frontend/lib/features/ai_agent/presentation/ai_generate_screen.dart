@@ -1,12 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/router/app_router.dart';
-import '../../decks/data/deck_repository.dart';
 import '../../decks/providers/deck_provider.dart';
 import '../providers/ai_provider.dart';
 import 'widgets/generation_progress_widget.dart';
@@ -25,7 +22,7 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
   String _language = 'ru';
   String? _selectedDeckId;
   bool _createNewDeck = true;
-  Timer? _pollTimer;
+  bool _savingToDeck = false;
 
   @override
   void initState() {
@@ -35,73 +32,66 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
     _topicController.dispose();
     super.dispose();
-  }
-
-  void _startPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(
-      Duration(seconds: AppConstants.aiJobPollIntervalSeconds),
-      (_) async {
-        await ref.read(aiGenerateStateProvider.notifier).pollJob();
-        final state = ref.read(aiGenerateStateProvider);
-        if (state.cards != null || state.status == 'failed') {
-          _pollTimer?.cancel();
-        }
-      },
-    );
   }
 
   Future<void> _generate() async {
     if (_topicController.text.trim().isEmpty) return;
 
-    String? deckId;
-    if (!_createNewDeck && _selectedDeckId != null) {
-      deckId = _selectedDeckId;
-    }
-
     await ref.read(aiGenerateStateProvider.notifier).startGenerate(
-          deckId: deckId,
           topic: _topicController.text.trim(),
           count: _count.round(),
           language: _language,
           difficulty: _difficulty,
         );
-
-    if (mounted && ref.read(aiGenerateStateProvider).jobId != null) {
-      _startPolling();
-    }
   }
 
   Future<void> _saveToDeck() async {
+    if (_savingToDeck) return;
     final state = ref.read(aiGenerateStateProvider);
     final cards = state.cards;
     if (cards == null || cards.isEmpty) return;
 
-    final deckRepo = ref.read(deckRepositoryProvider);
-    String? deckId = _selectedDeckId;
-    if (_createNewDeck || deckId == null) {
-      final deck = await deckRepo.createDeck(
-        title: 'ИИ: ${_topicController.text.trim()}',
-        description: 'Сгенерировано ИИ',
-      );
-      deckId = deck.id;
-    }
+    setState(() => _savingToDeck = true);
+    try {
+      final deckRepo = ref.read(deckRepositoryProvider);
+      String? deckId = _selectedDeckId;
+      if (_createNewDeck || deckId == null) {
+        final deck = await deckRepo.createDeck(
+          title: 'ИИ: ${_topicController.text.trim()}',
+          description: 'Сгенерировано ИИ',
+        );
+        deckId = deck.id;
+      }
 
-    for (final c in cards) {
-      await deckRepo.createCard(
-        deckId!,
-        question: c['question'] ?? '',
-        answer: c['answer'] ?? '',
-      );
-    }
+      for (final c in cards) {
+        await deckRepo.createCard(
+          deckId,
+          question: c['question'] ?? '',
+          answer: c['answer'] ?? '',
+        );
+      }
 
-    ref.invalidate(decksListProvider);
-    ref.read(aiGenerateStateProvider.notifier).clear();
-    if (mounted) {
-      context.go(AppRoutes.deckDetailPath(deckId!));
+      ref.invalidate(decksListProvider);
+      ref.invalidate(deckDetailProvider(deckId));
+      ref.read(aiGenerateStateProvider.notifier).clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Карточки сохранены')),
+        );
+        context.go(AppRoutes.deckDetailPath(deckId));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось сохранить: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _savingToDeck = false);
+      }
     }
   }
 
@@ -150,7 +140,7 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
               ],
               onChanged: (v) => setState(() => _difficulty = v ?? 'beginner'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 20),
             DropdownButtonFormField<String>(
               value: _language,
               decoration: const InputDecoration(labelText: 'Язык'),
@@ -176,8 +166,10 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
                   value: _selectedDeckId,
                   decoration: const InputDecoration(labelText: 'Колода'),
                   items: [
-                    const DropdownMenuItem(value: null, child: Text('— Выберите —')),
-                    ...decks.map((d) => DropdownMenuItem(value: d.id, child: Text(d.title))),
+                    const DropdownMenuItem(
+                        value: null, child: Text('— Выберите —')),
+                    ...decks.map((d) =>
+                        DropdownMenuItem(value: d.id, child: Text(d.title))),
                   ],
                   onChanged: (v) => setState(() => _selectedDeckId = v),
                 ),
@@ -188,32 +180,44 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
             if (aiState.error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Text(aiState.error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                child: Text(aiState.error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
               ),
-            if (aiState.jobId != null && aiState.cards == null && aiState.error == null)
-              GenerationProgressWidget(status: aiState.status),
+            if (aiState.status == 'starting' &&
+                aiState.cards == null &&
+                aiState.error == null)
+              const GenerationProgressWidget(status: 'Генерация...'),
             if (aiState.cards != null) ...[
-              Text('Создано карточек: ${aiState.cards!.length}', style: Theme.of(context).textTheme.titleMedium),
+              Text('Создано карточек: ${aiState.cards!.length}',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               ...aiState.cards!.take(10).map((c) => Card(
                     child: ListTile(
                       title: Text((c['question'] ?? '').length > 60
                           ? '${(c['question'] ?? '').substring(0, 60)}...'
                           : c['question'] ?? ''),
-                      subtitle: Text((c['answer'] ?? '').length > 40 ? '${(c['answer'] ?? '').substring(0, 40)}...' : c['answer'] ?? ''),
+                      subtitle: Text((c['answer'] ?? '').length > 40
+                          ? '${(c['answer'] ?? '').substring(0, 40)}...'
+                          : c['answer'] ?? ''),
                     ),
                   )),
               if (aiState.cards!.length > 10)
                 Text('... и ещё ${aiState.cards!.length - 10}'),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: _saveToDeck,
+                onPressed: _savingToDeck ? null : _saveToDeck,
                 icon: const Icon(Icons.save),
-                label: const Text('Сохранить в колоду'),
+                label: Text(
+                    _savingToDeck ? 'Сохранение...' : 'Сохранить в колоду'),
               ),
             ],
-            if (aiState.cards == null && aiState.jobId == null)
+            if (aiState.cards == null)
               FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize:
+                      const Size.fromHeight(50), // увеличивает ТОЛЬКО высоту
+                ),
                 onPressed: aiState.status == 'starting' ? null : _generate,
                 child: aiState.status == 'starting'
                     ? const SizedBox(
@@ -221,7 +225,8 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
                         width: 24,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Генерировать'),
+                    : const Text('Генерировать',
+                        style: TextStyle(fontSize: 16)),
               ),
           ],
         ),

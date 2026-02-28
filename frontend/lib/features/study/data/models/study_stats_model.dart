@@ -5,17 +5,14 @@ part 'study_stats_model.g.dart';
 @JsonSerializable()
 class StudyStatsModel {
   const StudyStatsModel({
-    this.newCount = 0,
-    this.reviewCount = 0,
-    this.learnedCount = 0,
+    this.totalCards = 0,
+    this.dueToday = 0,
+    this.learnedCards = 0,
   });
 
-  @JsonKey(name: 'new_count')
-  final int newCount;
-  @JsonKey(name: 'review_count')
-  final int reviewCount;
-  @JsonKey(name: 'learned_count')
-  final int learnedCount;
+  final int totalCards;
+  final int dueToday;
+  final int learnedCards;
 
   factory StudyStatsModel.fromJson(Map<String, dynamic> json) =>
       _$StudyStatsModelFromJson(json);

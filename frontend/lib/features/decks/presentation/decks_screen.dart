@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/router/app_router.dart';
-import '../data/models/deck_model.dart';
 import '../providers/deck_provider.dart';
 import 'widgets/deck_card_widget.dart';
 
@@ -35,7 +34,8 @@ class DecksScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.folder_open, size: 64, color: Theme.of(context).colorScheme.outline),
+                  Icon(Icons.folder_open,
+                      size: 64, color: Theme.of(context).colorScheme.outline),
                   const SizedBox(height: 16),
                   Text(
                     'Нет колод',
@@ -63,7 +63,8 @@ class DecksScreen extends ConsumerWidget {
                 return DeckCardWidget(
                   deck: deck,
                   learnedCount: 0,
-                  onDelete: () => _confirmDelete(context, ref, deck.id, deck.title),
+                  onDelete: () =>
+                      _confirmDelete(context, ref, deck.id, deck.title),
                 );
               },
             ),
@@ -84,28 +85,33 @@ class DecksScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'ai',
-            onPressed: () => context.push(AppRoutes.aiGenerate),
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('Создать с ИИ'),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton.extended(
-            heroTag: 'manual',
-            onPressed: () => _showCreateDeckDialog(context, ref),
-            icon: const Icon(Icons.add),
-            label: const Text('Создать вручную'),
-          ),
-        ],
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 76.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton.extended(
+              heroTag: 'ai',
+              onPressed: () => context.push(AppRoutes.aiGenerate),
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Создать с ИИ'),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton.extended(
+              heroTag: 'manual',
+              onPressed: () => _showCreateDeckDialog(context, ref),
+              icon: const Icon(Icons.add),
+              label: const Text('Создать вручную'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _showCreateDeckDialog(BuildContext context, WidgetRef ref) async {
+  Future<void> _showCreateDeckDialog(
+      BuildContext context, WidgetRef ref) async {
     final titleController = TextEditingController();
     final descController = TextEditingController();
     final created = await showDialog<bool>(
@@ -123,13 +129,16 @@ class DecksScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: 'Описание (необязательно)'),
+              decoration:
+                  const InputDecoration(labelText: 'Описание (необязательно)'),
               maxLines: 2,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
           FilledButton(
             onPressed: () {
               if (titleController.text.trim().isEmpty) return;
@@ -143,20 +152,25 @@ class DecksScreen extends ConsumerWidget {
     if (created == true && context.mounted) {
       await ref.read(deckRepositoryProvider).createDeck(
             title: titleController.text.trim(),
-            description: descController.text.trim().isEmpty ? null : descController.text.trim(),
+            description: descController.text.trim().isEmpty
+                ? null
+                : descController.text.trim(),
           );
       ref.invalidate(decksListProvider);
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, String deckId, String title) async {
+  Future<void> _confirmDelete(
+      BuildContext context, WidgetRef ref, String deckId, String title) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Удалить колоду?'),
         content: Text('Колода «$title» и все карточки будут удалены.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),

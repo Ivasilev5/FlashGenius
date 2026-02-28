@@ -1,22 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import '../../../core/network/dio_client.dart';
 import '../data/deck_repository.dart';
 import '../data/models/deck_model.dart';
 
 final deckRepositoryProvider = Provider<DeckRepository>((ref) {
-  final dio = ref.watch(dioClientProvider);
-  return DeckRepository(dio);
+  return DeckRepository(FirebaseFirestore.instance, FirebaseAuth.instance);
 });
 
-final decksListProvider = FutureProvider.autoDispose<List<DeckModel>>((ref) async {
+final decksListProvider = StreamProvider.autoDispose<List<DeckModel>>((ref) {
   final repo = ref.watch(deckRepositoryProvider);
-  return repo.getDecks();
+  return repo.watchDecks();
 });
 
-final deckDetailProvider = FutureProvider.autoDispose.family<DeckModel, String>((ref, deckId) async {
+final deckDetailProvider =
+    StreamProvider.autoDispose.family<DeckModel, String>((ref, deckId) {
   final repo = ref.watch(deckRepositoryProvider);
-  return repo.getDeck(deckId);
+  return repo.watchDeck(deckId);
 });
 
 void invalidateDecks(Ref ref) {

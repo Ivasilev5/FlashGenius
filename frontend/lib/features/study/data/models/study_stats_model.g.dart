@@ -8,14 +8,14 @@ part of 'study_stats_model.dart';
 
 StudyStatsModel _$StudyStatsModelFromJson(Map<String, dynamic> json) =>
     StudyStatsModel(
-      newCount: json['new_count'] as int? ?? 0,
-      reviewCount: json['review_count'] as int? ?? 0,
-      learnedCount: json['learned_count'] as int? ?? 0,
+      totalCards: json['totalCards'] as int? ?? 0,
+      dueToday: json['dueToday'] as int? ?? 0,
+      learnedCards: json['learnedCards'] as int? ?? 0,
     );
 
 Map<String, dynamic> _$StudyStatsModelToJson(StudyStatsModel instance) =>
     <String, dynamic>{
-      'new_count': instance.newCount,
-      'review_count': instance.reviewCount,
-      'learned_count': instance.learnedCount,
+      'totalCards': instance.totalCards,
+      'dueToday': instance.dueToday,
+      'learnedCards': instance.learnedCards,
     };

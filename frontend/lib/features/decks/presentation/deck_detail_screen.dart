@@ -22,6 +22,17 @@ class DeckDetailScreen extends ConsumerWidget {
             : const Text('Колода'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: deckAsync.valueOrNull == null
+                ? null
+                : () => _showEditDeckDialog(
+                      context,
+                      ref,
+                      deckId,
+                      deckAsync.valueOrNull!,
+                    ),
+          ),
+          IconButton(
             icon: const Icon(Icons.bar_chart),
             onPressed: () => context.push(AppRoutes.statsPath(deckId)),
           ),
@@ -60,7 +71,8 @@ class DeckDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showAddCardDialog(BuildContext context, WidgetRef ref, String deckId) async {
+  Future<void> _showAddCardDialog(
+      BuildContext context, WidgetRef ref, String deckId) async {
     final qController = TextEditingController();
     final aController = TextEditingController();
     final ok = await showDialog<bool>(
@@ -84,10 +96,15 @@ class DeckDetailScreen extends ConsumerWidget {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
           FilledButton(
             onPressed: () {
-              if (qController.text.trim().isEmpty || aController.text.trim().isEmpty) return;
+              if (qController.text.trim().isEmpty ||
+                  aController.text.trim().isEmpty) {
+                return;
+              }
               Navigator.pop(ctx, true);
             },
             child: const Text('Добавить'),
@@ -104,6 +121,62 @@ class DeckDetailScreen extends ConsumerWidget {
       ref.invalidate(deckDetailProvider(deckId));
       ref.invalidate(decksListProvider);
     }
+  }
+
+  Future<void> _showEditDeckDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String deckId,
+    DeckModel deck,
+  ) async {
+    final titleController = TextEditingController(text: deck.title);
+    final descController = TextEditingController(text: deck.description ?? '');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Редактировать колоду'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Название'),
+              maxLines: 1,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(labelText: 'Описание'),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (titleController.text.trim().isEmpty) return;
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+
+    await ref.read(deckRepositoryProvider).updateDeck(
+          deckId,
+          title: titleController.text.trim(),
+          description: descController.text.trim().isEmpty
+              ? null
+              : descController.text.trim(),
+        );
+    ref.invalidate(deckDetailProvider(deckId));
+    ref.invalidate(decksListProvider);
   }
 }
 
@@ -122,7 +195,8 @@ class _CardList extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.style, size: 64, color: Theme.of(context).colorScheme.outline),
+            Icon(Icons.style,
+                size: 64, color: Theme.of(context).colorScheme.outline),
             const SizedBox(height: 16),
             const Text('Нет карточек'),
             const SizedBox(height: 8),
@@ -155,38 +229,99 @@ class _CardTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final answerPreview = card.answer.length > 80 ? '${card.answer.substring(0, 80)}...' : card.answer;
+    final answerPreview = card.answer.length > 80
+        ? '${card.answer.substring(0, 80)}...'
+        : card.answer;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        title: Text(card.question, maxLines: 2, overflow: TextOverflow.ellipsis),
-        subtitle: Text(answerPreview, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title:
+            Text(card.question, maxLines: 2, overflow: TextOverflow.ellipsis),
+        subtitle:
+            Text(answerPreview, maxLines: 1, overflow: TextOverflow.ellipsis),
+        onTap: () => _showEditCardDialog(context, ref),
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline),
-          onPressed: () async {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('Удалить карточку?'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Отмена')),
-                  FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('Удалить'),
-                  ),
-                ],
-              ),
-            );
-            if (confirm == true && context.mounted) {
-              await ref.read(deckRepositoryProvider).deleteCard(card.id);
-              ref.invalidate(deckDetailProvider(deckId));
-              ref.invalidate(decksListProvider);
-            }
-          },
+          onPressed: () => _deleteCard(context, ref),
         ),
       ),
     );
+  }
+
+  Future<void> _showEditCardDialog(BuildContext context, WidgetRef ref) async {
+    final qController = TextEditingController(text: card.question);
+    final aController = TextEditingController(text: card.answer);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Редактировать карточку'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: qController,
+              decoration: const InputDecoration(labelText: 'Вопрос'),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: aController,
+              decoration: const InputDecoration(labelText: 'Ответ'),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (qController.text.trim().isEmpty ||
+                  aController.text.trim().isEmpty) {
+                return;
+              }
+              Navigator.pop(ctx, true);
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true || !context.mounted) return;
+    await ref.read(deckRepositoryProvider).updateCard(
+          deckId,
+          card.id,
+          question: qController.text.trim(),
+          answer: aController.text.trim(),
+        );
+    ref.invalidate(deckDetailProvider(deckId));
+    ref.invalidate(decksListProvider);
+  }
+
+  Future<void> _deleteCard(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Удалить карточку?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Отмена')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !context.mounted) return;
+    await ref.read(deckRepositoryProvider).deleteCard(deckId, card.id);
+    ref.invalidate(deckDetailProvider(deckId));
+    ref.invalidate(decksListProvider);
   }
 }

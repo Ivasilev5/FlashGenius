@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Primary (indigo/purple — educational style)
-  static const Color primaryLight = Color(0xFF5C6BC0);
-  static const Color primaryDark = Color(0xFF7986CB);
+  // Primary (iOS-style blue)
+  static const Color primaryLight = Color(0xFF007AFF);
+  static const Color primaryDark = Color(0xFF0A84FF);
 
   static const Color surfaceLight = Color(0xFFF5F5F5);
   static const Color surfaceDark = Color(0xFF121212);

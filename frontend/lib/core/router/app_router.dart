@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import '../storage/secure_storage.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
-import '../../features/decks/presentation/decks_screen.dart';
+import '../../features/home/presentation/home_shell_screen.dart';
 import '../../features/decks/presentation/deck_detail_screen.dart';
 import '../../features/study/presentation/study_screen.dart';
 import '../../features/study/presentation/stats_screen.dart';
@@ -29,11 +29,11 @@ class AppRoutes {
   static String statsPath(String deckId) => '/decks/$deckId/stats';
 }
 
-GoRouter createAppRouter(SecureStorage secureStorage) {
+GoRouter createAppRouter() {
   return GoRouter(
     initialLocation: AppRoutes.splash,
     redirect: (BuildContext context, GoRouterState state) async {
-      final hasToken = await secureStorage.hasTokens();
+      final isLoggedIn = FirebaseAuth.instance.currentUser != null;
       final isAuthRoute = state.matchedLocation == AppRoutes.login ||
           state.matchedLocation == AppRoutes.register ||
           state.matchedLocation == AppRoutes.splash;
@@ -41,10 +41,10 @@ GoRouter createAppRouter(SecureStorage secureStorage) {
       if (state.matchedLocation == AppRoutes.splash) {
         return null;
       }
-      if (hasToken && (state.matchedLocation == AppRoutes.login || state.matchedLocation == AppRoutes.register)) {
+      if (isLoggedIn && (state.matchedLocation == AppRoutes.login || state.matchedLocation == AppRoutes.register)) {
         return AppRoutes.home;
       }
-      if (!hasToken && !isAuthRoute) {
+      if (!isLoggedIn && !isAuthRoute) {
         return AppRoutes.login;
       }
       return null;
@@ -64,7 +64,7 @@ GoRouter createAppRouter(SecureStorage secureStorage) {
       ),
       GoRoute(
         path: AppRoutes.home,
-        builder: (_, __) => const DecksScreen(),
+        builder: (_, __) => const HomeShellScreen(),
       ),
       GoRoute(
         path: '/decks/:deckId',

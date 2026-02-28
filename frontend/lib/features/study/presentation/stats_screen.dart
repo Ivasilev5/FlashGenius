@@ -53,29 +53,21 @@ class _StatsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total = stats.newCount + stats.reviewCount + stats.learnedCount;
+    final total = stats.totalCards;
     final sections = <PieChartSectionData>[];
     if (total > 0) {
-      if (stats.newCount > 0) {
+      if (stats.dueToday > 0) {
         sections.add(PieChartSectionData(
-          value: stats.newCount.toDouble(),
-          title: '${stats.newCount}',
-          color: Colors.blue,
-          radius: 60,
-        ));
-      }
-      if (stats.reviewCount > 0) {
-        sections.add(PieChartSectionData(
-          value: stats.reviewCount.toDouble(),
-          title: '${stats.reviewCount}',
+          value: stats.dueToday.toDouble(),
+          title: '${stats.dueToday}',
           color: Colors.orange,
           radius: 60,
         ));
       }
-      if (stats.learnedCount > 0) {
+      if (stats.learnedCards > 0) {
         sections.add(PieChartSectionData(
-          value: stats.learnedCount.toDouble(),
-          title: '${stats.learnedCount}',
+          value: stats.learnedCards.toDouble(),
+          title: '${stats.learnedCards}',
           color: Colors.green,
           radius: 60,
         ));
@@ -112,14 +104,20 @@ class _StatsContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Новые', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600)),
-                  Text('${stats.newCount} карточек'),
+                  const Text('Всего карточек',
+                      style: TextStyle(
+                          color: Colors.blue, fontWeight: FontWeight.w600)),
+                  Text('${stats.totalCards} карточек'),
                   const SizedBox(height: 12),
-                  Text('На повторении', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600)),
-                  Text('${stats.reviewCount} карточек'),
+                  const Text('На сегодня',
+                      style: TextStyle(
+                          color: Colors.orange, fontWeight: FontWeight.w600)),
+                  Text('${stats.dueToday} карточек к повторению'),
                   const SizedBox(height: 12),
-                  Text('Выучено', style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600)),
-                  Text('${stats.learnedCount} карточек'),
+                  const Text('Выучено',
+                      style: TextStyle(
+                          color: Colors.green, fontWeight: FontWeight.w600)),
+                  Text('${stats.learnedCards} карточек'),
                 ],
               ),
             ),

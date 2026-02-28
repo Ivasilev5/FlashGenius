@@ -20,20 +20,22 @@ class FlipCardWidget extends StatelessWidget {
     final cardWidth = size.width * 0.8;
     final cardHeight = cardWidth / AppConstants.cardAspectRatio;
 
-    return FlipCard(
-      key: Key(card.id),
-      onFlip: (_) => onFlip?.call(),
-      front: _CardSide(
-        width: cardWidth,
-        height: cardHeight,
-        isFront: true,
-        text: card.question,
-      ),
-      back: _CardSide(
-        width: cardWidth,
-        height: cardHeight,
-        isFront: false,
-        text: card.answer,
+    return Center(
+      child: FlipCard(
+        key: Key(card.id),
+        onFlip: onFlip == null ? null : () => onFlip!.call(),
+        front: _CardSide(
+          width: cardWidth,
+          height: cardHeight,
+          isFront: true,
+          text: card.question,
+        ),
+        back: _CardSide(
+          width: cardWidth,
+          height: cardHeight,
+          isFront: false,
+          text: card.answer,
+        ),
       ),
     );
   }
