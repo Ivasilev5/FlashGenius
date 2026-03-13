@@ -1,0 +1,1 @@
+ /Users/iv_vas/Development/projects/FlashGenius/.dart_tool/flutter_build/fd9644852a0ad22a344374a0dcd717bc/native_assets.json: 
