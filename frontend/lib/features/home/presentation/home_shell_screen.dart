@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../decks/presentation/decks_screen.dart';
 import '../../ai_agent/presentation/ai_generate_screen.dart';
-import '../../ai_agent/presentation/ai_pdf_screen.dart';
+import '../../ai_agent/presentation/ai_text_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/data/models/auth_response.dart';
 
@@ -37,48 +37,53 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
+    final width = MediaQuery.sizeOf(context).width;
     final useIosNavigation =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+    final useRailNavigation = !useIosNavigation && width >= 1000;
 
     final pages = [
-      const DecksScreen(),
+      const DecksScreen(showAppBar: false),
       const _AiHubScreen(),
       _ProfileScreen(authState: authState),
     ];
 
     if (useIosNavigation) {
       return CupertinoPageScaffold(
-        child: Stack(
-          children: [
-            Positioned.fill(child: pages[_index]),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: SafeArea(
-                child: CNTabBar(
-                  items: const [
-                    CNTabBarItem(
-                      label: 'Колоды',
-                      icon: CNSymbol('rectangle.grid.2x2.fill'),
-                    ),
-                    CNTabBarItem(
-                      label: 'ИИ',
-                      icon: CNSymbol('sparkles'),
-                    ),
-                    CNTabBarItem(
-                      label: 'Профиль',
-                      icon: CNSymbol('person.fill'),
-                    ),
-                  ],
-                  currentIndex: _index,
-                  onTap: (value) {
-                    setState(() {
-                      _index = value;
-                    });
-                  },
+        child: Padding(
+          padding: const EdgeInsets.only(top: 30.0),
+          child: Stack(
+            children: [
+              Positioned.fill(child: pages[_index]),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: SafeArea(
+                  child: CNTabBar(
+                    items: const [
+                      CNTabBarItem(
+                        label: 'Колоды',
+                        icon: CNSymbol('rectangle.grid.2x2.fill'),
+                      ),
+                      CNTabBarItem(
+                        label: 'ИИ',
+                        icon: CNSymbol('sparkles'),
+                      ),
+                      CNTabBarItem(
+                        label: 'Профиль',
+                        icon: CNSymbol('person.fill'),
+                      ),
+                    ],
+                    currentIndex: _index,
+                    onTap: (value) {
+                      setState(() {
+                        _index = value;
+                      });
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -87,35 +92,105 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
       appBar: AppBar(
         title: Text(_title),
       ),
-      body: IndexedStack(
-        index: _index,
-        children: pages,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (value) {
-          setState(() {
-            _index = value;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.style_outlined),
-            selectedIcon: Icon(Icons.style),
-            label: 'Колоды',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            selectedIcon: Icon(Icons.auto_awesome),
-            label: 'ИИ',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Профиль',
-          ),
-        ],
-      ),
+      body: useRailNavigation
+          ? Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _index,
+                  onDestinationSelected: (value) {
+                    setState(() {
+                      _index = value;
+                    });
+                  },
+                  labelType: NavigationRailLabelType.selected,
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.style_outlined),
+                      selectedIcon: Icon(Icons.style),
+                      label: Text('Колоды'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.auto_awesome_outlined),
+                      selectedIcon: Icon(Icons.auto_awesome),
+                      label: Text('ИИ'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person),
+                      label: Text('Профиль'),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1120),
+                      child: IndexedStack(
+                        index: _index,
+                        children: pages,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : kIsWeb
+              ? Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 900),
+                    child: IndexedStack(
+                      index: _index,
+                      children: pages,
+                    ),
+                  ),
+                )
+              : IndexedStack(
+                  index: _index,
+                  children: pages,
+                ),
+      bottomNavigationBar: useRailNavigation
+          ? null
+          : SafeArea(
+              minimum: const EdgeInsets.only(
+                left: kIsWeb ? 16 : 0,
+                right: kIsWeb ? 16 : 0,
+                bottom: kIsWeb ? 12 : 0,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                      maxWidth: kIsWeb ? 640 : double.infinity),
+                  child: NavigationBar(
+                    selectedIndex: _index,
+                    onDestinationSelected: (value) {
+                      setState(() {
+                        _index = value;
+                      });
+                    },
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.style_outlined),
+                        selectedIcon: Icon(Icons.style),
+                        label: 'Колоды',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.auto_awesome_outlined),
+                        selectedIcon: Icon(Icons.auto_awesome),
+                        label: 'ИИ',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.person_outline),
+                        selectedIcon: Icon(Icons.person),
+                        label: 'Профиль',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -137,7 +212,7 @@ class _AiHubScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Генерируйте карточки по теме или из PDF-документа с помощью ИИ.',
+            'Генерируйте карточки по теме или из вставленного текста с помощью ИИ.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
@@ -157,13 +232,13 @@ class _AiHubScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Card(
             child: ListTile(
-              leading: const Icon(Icons.picture_as_pdf),
-              title: const Text('Генерация из PDF'),
+              leading: const Icon(Icons.text_snippet_outlined),
+              title: const Text('Генерация из текста'),
               subtitle: const Text(
-                  'Загрузить PDF и получить карточки по содержимому.'),
+                  'Вставить большой кусок текста и получить карточки по содержимому.'),
               onTap: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AiPdfScreen()),
+                  MaterialPageRoute(builder: (_) => const AiTextScreen()),
                 );
               },
             ),

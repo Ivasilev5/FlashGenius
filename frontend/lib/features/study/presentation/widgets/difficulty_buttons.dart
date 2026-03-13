@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -19,10 +20,10 @@ class DifficultyOption {
 }
 
 const List<DifficultyOption> difficultyOptions = [
-  DifficultyOption(key: 'again', label: 'Снова', color: AppColors.again, icon: '🔴', days: '<1д'),
-  DifficultyOption(key: 'hard', label: 'Сложно', color: AppColors.hard, icon: '🟠', days: '~2д'),
-  DifficultyOption(key: 'good', label: 'Хорошо', color: AppColors.good, icon: '🟢', days: '~4д'),
-  DifficultyOption(key: 'easy', label: 'Легко', color: AppColors.easy, icon: '🔵', days: '~7д'),
+  DifficultyOption(key: 'again', label: 'Снова', color: AppColors.again, icon: '🔴', days: '<10м'),
+  DifficultyOption(key: 'hard', label: 'Сложно', color: AppColors.hard, icon: '🟠', days: '1ч'),
+  DifficultyOption(key: 'good', label: 'Хорошо', color: AppColors.good, icon: '🟢', days: '1д'),
+  DifficultyOption(key: 'easy', label: 'Легко', color: AppColors.easy, icon: '🔵', days: '4д'),
 ];
 
 class DifficultyButtons extends StatelessWidget {
@@ -35,14 +36,28 @@ class DifficultyButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final children = <Widget>[];
+    for (final opt in difficultyOptions) {
+      if (children.isNotEmpty) children.add(const SizedBox(width: 8));
+      children.add(
+        Expanded(
+          child: _DifficultyButton(
+            option: opt,
+            onPressed: () => onSelected(opt.key),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: difficultyOptions.map((opt) => _DifficultyButton(
-          option: opt,
-          onPressed: () => onSelected(opt.key),
-        )).toList(),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: kIsWeb ? 520.0 : double.infinity,
+          ),
+          child: Row(children: children),
+        ),
       ),
     );
   }
@@ -63,7 +78,7 @@ class _DifficultyButton extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Material(
-          color: option.color.withOpacity(0.2),
+          color: option.color.withValues(alpha: 51),
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             onTap: onPressed,
@@ -87,7 +102,7 @@ class _DifficultyButton extends StatelessWidget {
                     option.days,
                     style: TextStyle(
                       fontSize: 10,
-                      color: option.color.withOpacity(0.8),
+                      color: option.color.withValues(alpha: 204),
                     ),
                   ),
                 ],

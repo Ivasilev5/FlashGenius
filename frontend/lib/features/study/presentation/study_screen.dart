@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -62,27 +63,34 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
             return _SessionComplete(reviewedCount: _reviewedCount, deckId: widget.deckId);
           }
           return SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                Text(
-                  'Карточка ${_reviewedCount + 1}',
-                  style: Theme.of(context).textTheme.titleMedium,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: kIsWeb ? 760 : double.infinity,
                 ),
-                const SizedBox(height: 24),
-                FlipCardWidget(
-                  card: card,
-                  onFlip: _onCardFlipped,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    Text(
+                      'Карточка ${_reviewedCount + 1}',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 24),
+                    FlipCardWidget(
+                      card: card,
+                      onFlip: _onCardFlipped,
+                    ),
+                    if (_showDifficultyButtons) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                        'Насколько хорошо вы помнили?',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      DifficultyButtons(onSelected: _onDifficultySelected),
+                    ],
+                  ],
                 ),
-                if (_showDifficultyButtons) ...[
-                  const SizedBox(height: 24),
-                  Text(
-                    'Насколько хорошо вы помнили?',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  DifficultyButtons(onSelected: _onDifficultySelected),
-                ],
-              ],
+              ),
             ),
           );
         },
@@ -114,30 +122,35 @@ class _SessionComplete extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.celebration, size: 80, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 24),
-            Text(
-              'Сессия завершена!',
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Повторено карточек: $reviewedCount',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: () => context.go(AppRoutes.deckDetailPath(deckId)),
-              icon: const Icon(Icons.done),
-              label: const Text('Готово'),
-            ),
-          ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: kIsWeb ? 560 : double.infinity,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.celebration, size: 80, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 24),
+              Text(
+                'Сессия завершена!',
+                style: Theme.of(context).textTheme.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Повторено карточек: $reviewedCount',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 32),
+              FilledButton.icon(
+                onPressed: () => context.go(AppRoutes.deckDetailPath(deckId)),
+                icon: const Icon(Icons.done),
+                label: const Text('Готово'),
+              ),
+            ],
+          ),
         ),
       ),
     );

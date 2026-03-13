@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,25 +9,29 @@ import '../providers/deck_provider.dart';
 import 'widgets/deck_card_widget.dart';
 
 class DecksScreen extends ConsumerWidget {
-  const DecksScreen({super.key});
+  const DecksScreen({super.key, this.showAppBar = true});
+
+  final bool showAppBar;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final decksAsync = ref.watch(decksListProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Мои колоды'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            onPressed: () async {
-              await ref.read(authStateProvider.notifier).logout();
-              if (context.mounted) context.go(AppRoutes.login);
-            },
-          ),
-        ],
-      ),
+      appBar: showAppBar
+          ? AppBar(
+              title: const Text('Мои колоды'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.person_outline),
+                  onPressed: () async {
+                    await ref.read(authStateProvider.notifier).logout();
+                    if (context.mounted) context.go(AppRoutes.login);
+                  },
+                ),
+              ],
+            )
+          : null,
       body: decksAsync.when(
         data: (decks) {
           if (decks.isEmpty) {
@@ -49,22 +54,38 @@ class DecksScreen extends ConsumerWidget {
           }
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(decksListProvider),
-            child: GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.85,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: decks.length,
-              itemBuilder: (context, index) {
-                final deck = decks[index];
-                return DeckCardWidget(
-                  deck: deck,
-                  learnedCount: 0,
-                  onDelete: () =>
-                      _confirmDelete(context, ref, deck.id, deck.title),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final maxWidth = kIsWeb ? 1100.0 : constraints.maxWidth;
+                final availableWidth =
+                    constraints.maxWidth < maxWidth ? constraints.maxWidth : maxWidth;
+                final crossAxisCount =
+                    ((availableWidth / 280).floor()).clamp(1, 4).toInt();
+
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxWidth),
+                    child: GridView.builder(
+                      padding: const EdgeInsets.all(16),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: kIsWeb ? 1.05 : 0.85,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: decks.length,
+                      itemBuilder: (context, index) {
+                        final deck = decks[index];
+                        return DeckCardWidget(
+                          deck: deck,
+                          learnedCount: 0,
+                          onDelete: () =>
+                              _confirmDelete(context, ref, deck.id, deck.title),
+                        );
+                      },
+                    ),
+                  ),
                 );
               },
             ),
@@ -86,7 +107,9 @@ class DecksScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 76.0),
+        padding: EdgeInsets.only(
+          bottom: !showAppBar && !kIsWeb ? 76 : 16,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
@@ -96,6 +119,13 @@ class DecksScreen extends ConsumerWidget {
               onPressed: () => context.push(AppRoutes.aiGenerate),
               icon: const Icon(Icons.auto_awesome),
               label: const Text('Создать с ИИ'),
+            ),
+            const SizedBox(height: 8),
+            FloatingActionButton.extended(
+              heroTag: 'aiText',
+              onPressed: () => context.push(AppRoutes.aiText),
+              icon: const Icon(Icons.text_snippet_outlined),
+              label: const Text('Из текста'),
             ),
             const SizedBox(height: 8),
             FloatingActionButton.extended(

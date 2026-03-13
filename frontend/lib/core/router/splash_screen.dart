@@ -24,6 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
     final storage = SecureStorage();
     final hasToken = await storage.hasTokens();
+    if (!mounted) return;
     if (hasToken) {
       context.go(AppRoutes.home);
     } else {

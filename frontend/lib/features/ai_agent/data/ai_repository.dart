@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:dio/dio.dart';
 
@@ -83,8 +82,8 @@ class AiRepository {
     return _parseCardsFromContent(content);
   }
 
-  Future<List<Map<String, String>>> generateFromPdf({
-    required File file,
+  Future<List<Map<String, String>>> generateFromText({
+    required String text,
     required int count,
     String language = 'ru',
   }) async {
@@ -92,13 +91,16 @@ class AiRepository {
       throw ApiException(message: 'AI is not configured');
     }
 
-    final bytes = await file.readAsBytes();
-    final base64 = base64Encode(bytes);
     final cappedCount = count.clamp(AppConstants.minAiCards, AppConstants.maxAiCards);
+    final normalizedText = _normalizeText(text);
+    if (normalizedText.isEmpty) {
+      throw ApiException(message: 'Empty text');
+    }
 
     final prompt = '''
-У тебя есть PDF-документ, закодированный в base64.
-Сконцентрируйся на ключевых понятиях и фактах и создай $cappedCount обучающих флеш-карточек (вопрос-ответ) на "$language".
+У тебя есть исходный учебный текст. Выбери самые важные термины/понятия и факты и создай $cappedCount обучающих флеш-карточек (вопрос-ответ) на "$language".
+Если в тексте есть термины без явного определения, сформулируй вопрос так, чтобы ответ можно было вывести из контекста (кратко, без выдуманных фактов).
+Карточки должны быть атомарными, без воды, без повторов.
 
 Ответь строго JSON-массивом:
 [
@@ -106,8 +108,8 @@ class AiRepository {
   ...
 ]
 
-Вот файл в base64:
-$base64
+Вот текст:
+$normalizedText
 ''';
 
     final response = await _dio.post<Map<String, dynamic>>(
@@ -119,7 +121,7 @@ $base64
         'messages': [
           {
             'role': 'system',
-            'content': 'Ты вытаскиваешь главное из документов и превращаешь в карточки.',
+            'content': 'Ты выделяешь главное из текста и превращаешь в карточки вопрос-ответ.',
           },
           {
             'role': 'user',
@@ -141,6 +143,22 @@ $base64
     }
 
     return _parseCardsFromContent(content);
+  }
+
+  String _normalizeText(String text) {
+    // Guard against huge prompts. Keep enough context to produce decent cards.
+    const maxChars = 12000;
+    const marker = '\n\n[...текст сокращён...]\n\n';
+    final trimmed = text.trim().replaceAll('\r\n', '\n');
+    if (trimmed.length <= maxChars) return trimmed;
+
+    const available = maxChars - marker.length;
+    // Prefer keeping more from the beginning but still preserve some tail context.
+    final headChars = (available * 2 / 3).floor().clamp(0, available);
+    final tailChars = (available - headChars).clamp(0, available);
+    final head = trimmed.substring(0, headChars);
+    final tail = trimmed.substring(trimmed.length - tailChars);
+    return '$head$marker$tail';
   }
 
   List<Map<String, String>> _parseCardsFromContent(String content) {
@@ -175,4 +193,3 @@ $base64
     return content.substring(start, end + 1);
   }
 }
-

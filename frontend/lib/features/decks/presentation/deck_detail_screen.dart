@@ -17,6 +17,16 @@ class DeckDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.home);
+            }
+          },
+        ),
         title: deckAsync.valueOrNull?.title != null
             ? Text(deckAsync.valueOrNull!.title)
             : const Text('Колода'),
@@ -44,6 +54,10 @@ class DeckDetailScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.auto_awesome),
             onPressed: () => context.push(AppRoutes.aiGenerate),
+          ),
+          IconButton(
+            icon: const Icon(Icons.text_snippet_outlined),
+            onPressed: () => context.push(AppRoutes.aiText),
           ),
         ],
       ),

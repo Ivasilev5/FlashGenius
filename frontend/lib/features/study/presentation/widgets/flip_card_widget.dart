@@ -73,7 +73,7 @@ class _CardSide extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppConstants.radiusLg),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 26),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -98,7 +98,7 @@ class _CardSide extends StatelessWidget {
               child: Text(
                 'Нажмите, чтобы перевернуть',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 153),
                 ),
               ),
             ),

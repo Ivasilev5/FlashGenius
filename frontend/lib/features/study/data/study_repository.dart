@@ -67,31 +67,60 @@ class StudyRepository {
     }
     final data = snap.data()!;
     var repetition = (data['repetition'] as int?) ?? 0;
-    var interval = (data['interval'] as int?) ?? 0;
+    var intervalMinutes = (data['interval_minutes'] as int?) ??
+        (((data['interval'] as int?) ?? 0) * 1440);
     var easiness = (data['easiness'] as num?)?.toDouble() ?? 2.5;
 
     final q = _difficultyToQuality(request.difficulty);
     if (q < 3) {
       repetition = 0;
-      interval = 1;
+      intervalMinutes = 8; // "<10 минут"
     } else {
       if (repetition == 0) {
-        interval = 1;
+        // Custom first-step intervals (minutes).
+        switch (request.difficulty) {
+          case 'hard':
+            intervalMinutes = 60; // 1 час
+            break;
+          case 'easy':
+            intervalMinutes = 4 * 1440; // 4 дня
+            break;
+          case 'good':
+          default:
+            intervalMinutes = 1440; // 1 день
+            break;
+        }
       } else if (repetition == 1) {
-        interval = 6;
+        // Second successful review. Keep SM-2 feel, but let "hard/easy" diverge a bit.
+        switch (request.difficulty) {
+          case 'hard':
+            intervalMinutes = 3 * 1440;
+            break;
+          case 'easy':
+            intervalMinutes = 8 * 1440;
+            break;
+          case 'good':
+          default:
+            intervalMinutes = 6 * 1440;
+            break;
+        }
       } else {
-        interval = (interval * easiness).round();
+        final currentDays = max(1, (intervalMinutes / 1440).round());
+        final nextDays = max(1, (currentDays * easiness).round());
+        intervalMinutes = nextDays * 1440;
       }
       repetition += 1;
       easiness = easiness + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
       easiness = max(1.3, easiness);
     }
 
-    final nextReview = DateTime.now().add(Duration(days: interval));
+    final nextReview = DateTime.now().add(Duration(minutes: intervalMinutes));
+    final intervalDaysForCompat = max(1, (intervalMinutes / 1440).ceil());
 
     await docRef.update({
       'repetition': repetition,
-      'interval': interval,
+      'interval_minutes': intervalMinutes,
+      'interval': intervalDaysForCompat,
       'easiness': easiness,
       'due_date': nextReview.toIso8601String(),
     });

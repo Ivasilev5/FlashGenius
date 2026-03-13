@@ -25,6 +25,7 @@ class DeckCardWidget extends StatelessWidget {
     return Card(
       elevation: AppConstants.cardElevation,
       clipBehavior: Clip.antiAlias,
+      color: const Color.fromARGB(255, 42, 40, 40),
       child: InkWell(
         onTap: () => context.push(AppRoutes.deckDetailPath(deck.id)),
         child: Padding(

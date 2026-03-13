@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../decks/providers/deck_provider.dart';
@@ -64,73 +62,96 @@ class AiGenerateNotifier extends StateNotifier<AiGenerateState> {
   }
 }
 
-/// State for PDF generation.
-final aiPdfStateProvider =
-    StateNotifierProvider<AiPdfNotifier, AiPdfState>((ref) {
+/// State for generation from pasted text.
+final aiTextStateProvider =
+    StateNotifierProvider<AiTextNotifier, AiTextState>((ref) {
   final repo = ref.watch(aiRepositoryProvider);
-  return AiPdfNotifier(repo);
+  return AiTextNotifier(repo);
 });
 
-class AiPdfState {
-  const AiPdfState({
-    this.filePath,
-    this.fileSize,
+class AiTextState {
+  const AiTextState({
     this.status = '',
     this.cards,
     this.error,
+    this.inputChars = 0,
+    this.usedChars = 0,
+    this.truncated = false,
   });
 
-  final String? filePath;
-  final int? fileSize;
   final String status;
   final List<Map<String, String>>? cards;
   final String? error;
+  final int inputChars;
+  final int usedChars;
+  final bool truncated;
 }
 
-class AiPdfNotifier extends StateNotifier<AiPdfState> {
-  AiPdfNotifier(this._repo) : super(const AiPdfState());
+class AiTextNotifier extends StateNotifier<AiTextState> {
+  AiTextNotifier(this._repo) : super(const AiTextState());
 
   final AiRepository _repo;
 
-  void setFile(String path, int size) {
-    state = AiPdfState(filePath: path, fileSize: size);
+  String _normalizeTextForPrompt(String text) {
+    const maxChars = 12000;
+    const marker = '\n\n[...текст сокращён...]\n\n';
+    final trimmed = text.trim().replaceAll('\r\n', '\n');
+    if (trimmed.length <= maxChars) return trimmed;
+
+    const available = maxChars - marker.length;
+    final headChars = (available * 2 / 3).floor().clamp(0, available);
+    final tailChars = (available - headChars).clamp(0, available);
+    final head = trimmed.substring(0, headChars);
+    final tail = trimmed.substring(trimmed.length - tailChars);
+    return '$head$marker$tail';
   }
 
   Future<void> startGenerate({
+    required String text,
     required int count,
     String language = 'ru',
   }) async {
-    if (state.filePath == null) {
-      state = const AiPdfState(error: 'Выберите файл');
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      state = const AiTextState(error: 'Вставьте текст');
       return;
     }
-    state = AiPdfState(
-      filePath: state.filePath,
-      fileSize: state.fileSize,
-      status: 'uploading',
+
+    // Mirror AiRepository truncation so the UI can show accurate counters.
+    const maxChars = 12000;
+    final normalized = trimmed.replaceAll('\r\n', '\n');
+    final used = _normalizeTextForPrompt(normalized);
+
+    state = AiTextState(
+      status: 'generating',
+      inputChars: normalized.length,
+      usedChars: used.length,
+      truncated: normalized.length > maxChars,
     );
     try {
-      final cards = await _repo.generateFromPdf(
-        file: File(state.filePath!),
+      final cards = await _repo.generateFromText(
+        text: used,
         count: count,
         language: language,
       );
-      state = AiPdfState(
-        filePath: state.filePath,
-        fileSize: state.fileSize,
+      state = AiTextState(
         status: 'done',
         cards: cards,
+        inputChars: normalized.length,
+        usedChars: used.length,
+        truncated: normalized.length > maxChars,
       );
     } catch (e) {
-      state = AiPdfState(
-        filePath: state.filePath,
-        fileSize: state.fileSize,
+      state = AiTextState(
         error: e.toString(),
+        inputChars: normalized.length,
+        usedChars: used.length,
+        truncated: normalized.length > maxChars,
       );
     }
   }
 
   void clear() {
-    state = const AiPdfState();
+    state = const AiTextState();
   }
 }

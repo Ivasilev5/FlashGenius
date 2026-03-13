@@ -9,7 +9,7 @@ import '../../features/decks/presentation/deck_detail_screen.dart';
 import '../../features/study/presentation/study_screen.dart';
 import '../../features/study/presentation/stats_screen.dart';
 import '../../features/ai_agent/presentation/ai_generate_screen.dart';
-import '../../features/ai_agent/presentation/ai_pdf_screen.dart';
+import '../../features/ai_agent/presentation/ai_text_screen.dart';
 import 'splash_screen.dart';
 
 /// App routes.
@@ -22,6 +22,8 @@ class AppRoutes {
   static const String study = '/decks/:deckId/study';
   static const String stats = '/decks/:deckId/stats';
   static const String aiGenerate = '/ai/generate';
+  static const String aiText = '/ai/text';
+  // Backward-compatible alias (previously PDF generation).
   static const String aiPdf = '/ai/pdf';
 
   static String deckDetailPath(String deckId) => '/decks/$deckId';
@@ -92,8 +94,12 @@ GoRouter createAppRouter() {
         builder: (_, __) => const AiGenerateScreen(),
       ),
       GoRoute(
+        path: AppRoutes.aiText,
+        builder: (_, __) => const AiTextScreen(),
+      ),
+      GoRoute(
         path: AppRoutes.aiPdf,
-        builder: (_, __) => const AiPdfScreen(),
+        builder: (_, __) => const AiTextScreen(),
       ),
     ],
   );
