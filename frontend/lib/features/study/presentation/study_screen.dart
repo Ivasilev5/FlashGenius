@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:math' as math;
 
 import '../../../core/router/app_router.dart';
 import '../providers/study_provider.dart';
@@ -20,13 +21,23 @@ class StudyScreen extends ConsumerStatefulWidget {
 class _StudyScreenState extends ConsumerState<StudyScreen> {
   bool _showDifficultyButtons = false;
   int _reviewedCount = 0;
+  late final DateTime _sessionStartedAt;
+  int _syncedReviewedCount = 0;
+  int _syncedDurationSeconds = 0;
 
   @override
   void initState() {
     super.initState();
+    _sessionStartedAt = DateTime.now();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(studyCurrentCardProvider.notifier).loadNext(widget.deckId);
     });
+  }
+
+  @override
+  void dispose() {
+    _syncStudyActivity();
+    super.dispose();
   }
 
   Future<void> _onDifficultySelected(String difficulty) async {
@@ -38,11 +49,37 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       _reviewedCount++;
     });
 
-    await ref.read(studyCurrentCardProvider.notifier).submitReview(card.id, difficulty);
+    await ref
+        .read(studyCurrentCardProvider.notifier)
+        .submitReview(card.id, difficulty);
+    await _syncStudyActivity();
   }
 
   void _onCardFlipped() {
     setState(() => _showDifficultyButtons = true);
+  }
+
+  Future<void> _syncStudyActivity() async {
+    if (_reviewedCount == 0) return;
+
+    final elapsedSeconds =
+        DateTime.now().difference(_sessionStartedAt).inSeconds;
+    final durationDelta = math.max(0, elapsedSeconds - _syncedDurationSeconds);
+    final reviewedDelta = math.max(0, _reviewedCount - _syncedReviewedCount);
+
+    if (durationDelta == 0 && reviewedDelta == 0) return;
+
+    try {
+      await ref.read(studyRepositoryProvider).recordStudyActivity(
+            reviewedCards: reviewedDelta,
+            durationSeconds: durationDelta,
+          );
+      _syncedDurationSeconds = elapsedSeconds;
+      _syncedReviewedCount = _reviewedCount;
+      ref.invalidate(studyProgressProvider);
+    } catch (_) {
+      // Keep the session responsive even if progress sync fails.
+    }
   }
 
   @override
@@ -60,7 +97,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       body: cardState.when(
         data: (card) {
           if (card == null) {
-            return _SessionComplete(reviewedCount: _reviewedCount, deckId: widget.deckId);
+            return _SessionComplete(
+                reviewedCount: _reviewedCount, deckId: widget.deckId);
           }
           return SingleChildScrollView(
             child: Center(
@@ -102,7 +140,9 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
               Text('Ошибка: $err', textAlign: TextAlign.center),
               const SizedBox(height: 16),
               FilledButton(
-                onPressed: () => ref.read(studyCurrentCardProvider.notifier).loadNext(widget.deckId),
+                onPressed: () => ref
+                    .read(studyCurrentCardProvider.notifier)
+                    .loadNext(widget.deckId),
                 child: const Text('Повторить'),
               ),
             ],
@@ -131,7 +171,8 @@ class _SessionComplete extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.celebration, size: 80, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.celebration,
+                  size: 80, color: Theme.of(context).colorScheme.primary),
               const SizedBox(height: 24),
               Text(
                 'Сессия завершена!',

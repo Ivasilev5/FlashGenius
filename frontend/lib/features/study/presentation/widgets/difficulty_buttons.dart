@@ -20,10 +20,30 @@ class DifficultyOption {
 }
 
 const List<DifficultyOption> difficultyOptions = [
-  DifficultyOption(key: 'again', label: 'Снова', color: AppColors.again, icon: '🔴', days: '<10м'),
-  DifficultyOption(key: 'hard', label: 'Сложно', color: AppColors.hard, icon: '🟠', days: '1ч'),
-  DifficultyOption(key: 'good', label: 'Хорошо', color: AppColors.good, icon: '🟢', days: '1д'),
-  DifficultyOption(key: 'easy', label: 'Легко', color: AppColors.easy, icon: '🔵', days: '4д'),
+  DifficultyOption(
+      key: 'again',
+      label: 'Снова',
+      color: AppColors.again,
+      icon: '🔴',
+      days: '<10м'),
+  DifficultyOption(
+      key: 'hard',
+      label: 'Сложно',
+      color: AppColors.hard,
+      icon: '🟠',
+      days: '1ч'),
+  DifficultyOption(
+      key: 'good',
+      label: 'Хорошо',
+      color: AppColors.good,
+      icon: '🟢',
+      days: '1д'),
+  DifficultyOption(
+      key: 'easy',
+      label: 'Легко',
+      color: AppColors.easy,
+      icon: '🔵',
+      days: '4д'),
 ];
 
 class DifficultyButtons extends StatelessWidget {
@@ -40,11 +60,9 @@ class DifficultyButtons extends StatelessWidget {
     for (final opt in difficultyOptions) {
       if (children.isNotEmpty) children.add(const SizedBox(width: 8));
       children.add(
-        Expanded(
-          child: _DifficultyButton(
-            option: opt,
-            onPressed: () => onSelected(opt.key),
-          ),
+        _DifficultyButton(
+          option: opt,
+          onPressed: () => onSelected(opt.key),
         ),
       );
     }

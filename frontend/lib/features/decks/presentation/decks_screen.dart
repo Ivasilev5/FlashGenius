@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/router/app_router.dart';
 import '../providers/deck_provider.dart';
+import '../../study/providers/study_provider.dart';
+import '../../study/presentation/widgets/study_progress_card.dart';
 import 'widgets/deck_card_widget.dart';
 
 class DecksScreen extends ConsumerWidget {
@@ -16,6 +18,8 @@ class DecksScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final decksAsync = ref.watch(decksListProvider);
+    final progressAsync = ref.watch(studyProgressProvider);
+    final dailyGoalAsync = ref.watch(dailyStudyGoalProvider);
 
     return Scaffold(
       appBar: showAppBar
@@ -34,31 +38,17 @@ class DecksScreen extends ConsumerWidget {
           : null,
       body: decksAsync.when(
         data: (decks) {
-          if (decks.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.folder_open,
-                      size: 64, color: Theme.of(context).colorScheme.outline),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Нет колод',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('Создайте колоду или сгенерируйте с ИИ'),
-                ],
-              ),
-            );
-          }
           return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(decksListProvider),
+            onRefresh: () async {
+              ref.invalidate(decksListProvider);
+              ref.invalidate(studyProgressProvider);
+            },
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final maxWidth = kIsWeb ? 1100.0 : constraints.maxWidth;
-                final availableWidth =
-                    constraints.maxWidth < maxWidth ? constraints.maxWidth : maxWidth;
+                final availableWidth = constraints.maxWidth < maxWidth
+                    ? constraints.maxWidth
+                    : maxWidth;
                 final crossAxisCount =
                     ((availableWidth / 280).floor()).clamp(1, 4).toInt();
 
@@ -66,24 +56,100 @@ class DecksScreen extends ConsumerWidget {
                   alignment: Alignment.topCenter,
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: maxWidth),
-                    child: GridView.builder(
-                      padding: const EdgeInsets.all(16),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        childAspectRatio: kIsWeb ? 1.05 : 0.85,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                      itemCount: decks.length,
-                      itemBuilder: (context, index) {
-                        final deck = decks[index];
-                        return DeckCardWidget(
-                          deck: deck,
-                          learnedCount: 0,
-                          onDelete: () =>
-                              _confirmDelete(context, ref, deck.id, deck.title),
-                        );
-                      },
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          sliver: SliverToBoxAdapter(
+                            child: progressAsync.when(
+                              data: (summary) => StudyProgressCard(
+                                summary: summary,
+                                goalOptions:
+                                    DailyStudyGoalNotifier.allowedGoals,
+                                isUpdatingGoal: dailyGoalAsync.isLoading,
+                                onDailyGoalSelected: (goal) async {
+                                  await ref
+                                      .read(dailyStudyGoalProvider.notifier)
+                                      .setGoal(goal);
+                                },
+                              ),
+                              loading: () => const Card(
+                                child: Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                              ),
+                              error: (error, _) => Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Text(
+                                    'Не удалось загрузить дневной прогресс: $error',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (decks.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.folder_open,
+                                    size: 64,
+                                    color:
+                                        Theme.of(context).colorScheme.outline,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Нет колод',
+                                    style:
+                                        Theme.of(context).textTheme.titleLarge,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Создайте колоду или сгенерируйте с ИИ',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.all(16),
+                            sliver: SliverGrid(
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                childAspectRatio: kIsWeb ? 1.05 : 0.85,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final deck = decks[index];
+                                  return DeckCardWidget(
+                                    deck: deck,
+                                    learnedCount: 0,
+                                    onDelete: () => _confirmDelete(
+                                      context,
+                                      ref,
+                                      deck.id,
+                                      deck.title,
+                                    ),
+                                  );
+                                },
+                                childCount: decks.length,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 );

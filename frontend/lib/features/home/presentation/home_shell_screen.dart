@@ -4,12 +4,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../decks/presentation/decks_screen.dart';
 import '../../ai_agent/presentation/ai_generate_screen.dart';
 import '../../ai_agent/presentation/ai_text_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/data/models/auth_response.dart';
+import '../../notifications/providers/study_reminder_provider.dart';
 
 class HomeShellScreen extends ConsumerStatefulWidget {
   const HomeShellScreen({super.key});
@@ -257,38 +259,161 @@ class _ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = authState.valueOrNull;
+    final reminderState = ref.watch(studyReminderProvider);
 
     return Material(
       color: Colors.transparent,
-      child: Padding(
+      child: ListView(
         padding: const EdgeInsets.all(24),
+        children: [
+          const SizedBox(height: 26),
+          Text(
+            'Профиль',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+          if (user != null) ...[
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: Text(user.username),
+              subtitle: Text(user.email),
+            ),
+          ] else
+            const Text('Пользователь не авторизован'),
+          const SizedBox(height: 20),
+          reminderState.when(
+            data: (settings) => _ReminderSettingsCard(settings: settings),
+            loading: () => const Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+            error: (error, _) => Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child:
+                    Text('Не удалось загрузить настройки уведомлений: $error'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Align(
+            alignment: Alignment.topRight,
+            child: FilledButton.icon(
+              onPressed: () async {
+                await ref.read(authStateProvider.notifier).logout();
+              },
+              icon: const Icon(Icons.logout),
+              label: const Text('Выйти'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReminderSettingsCard extends ConsumerWidget {
+  const _ReminderSettingsCard({required this.settings});
+
+  final StudyReminderSettings settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(studyReminderProvider.notifier);
+    final formattedTime = DateFormat.Hm().format(
+      DateTime(0, 1, 1, settings.time.hour, settings.time.minute),
+    );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 26),
-            Text(
-              'Профиль',
-              style: Theme.of(context).textTheme.headlineSmall,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.notifications_active_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Напоминания о повторении',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Ежедневное локальное уведомление помогает не выпадать из интервального повторения.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: settings.isEnabled,
+                  onChanged: (value) async {
+                    await notifier.setEnabled(value);
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            if (user != null) ...[
-              ListTile(
-                leading: const Icon(Icons.person),
-                title: Text(user.username),
-                subtitle: Text(user.email),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.schedule),
+              title: const Text('Время напоминания'),
+              subtitle: Text(formattedTime),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final pickedTime = await showTimePicker(
+                  context: context,
+                  initialTime: settings.time,
+                );
+                if (pickedTime == null) return;
+                await notifier.setTime(pickedTime);
+              },
+            ),
+            if (!settings.permissionGranted) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Если система ещё не выдала доступ, включение переключателя запросит разрешение на уведомления.',
+                ),
               ),
-            ] else
-              const Text('Пользователь не авторизован'),
-            const SizedBox(height: 18),
-            Container(
-              alignment: Alignment.topRight,
-              child: FilledButton.icon(
-                onPressed: () async {
-                  await ref.read(authStateProvider.notifier).logout();
-                },
-                icon: const Icon(Icons.logout),
-                label: const Text('Выйти'),
-              ),
+            ],
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await notifier.requestPermissions();
+                  },
+                  icon: const Icon(Icons.lock_open),
+                  label: const Text('Разрешить уведомления'),
+                ),
+                FilledButton.tonalIcon(
+                  onPressed: () async {
+                    await notifier.sendTestNotification();
+                  },
+                  icon: const Icon(Icons.notifications),
+                  label: const Text('Тестовое уведомление'),
+                ),
+              ],
             ),
           ],
         ),

@@ -2,10 +2,12 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/network/api_exception.dart';
 import 'models/card_model.dart';
 import 'models/review_request.dart';
+import 'models/study_progress_summary.dart';
 import 'models/study_stats_model.dart';
 
 class StudyRepository {
@@ -23,7 +25,13 @@ class StudyRepository {
   }
 
   CollectionReference<Map<String, dynamic>> _decksCol(String deckId) =>
-      _firestore.collection('users/$_uid/decks').doc(deckId).collection('cards');
+      _firestore
+          .collection('users/$_uid/decks')
+          .doc(deckId)
+          .collection('cards');
+
+  CollectionReference<Map<String, dynamic>> get _activityCol =>
+      _firestore.collection('users/$_uid/study_activity');
 
   Future<StudyCardModel?> getNextCard(String deckId) async {
     final now = DateTime.now();
@@ -59,7 +67,8 @@ class StudyRepository {
     );
   }
 
-  Future<void> submitReview(String deckId, String cardId, ReviewRequest request) async {
+  Future<void> submitReview(
+      String deckId, String cardId, ReviewRequest request) async {
     final docRef = _decksCol(deckId).doc(cardId);
     final snap = await docRef.get();
     if (!snap.exists) {
@@ -158,6 +167,74 @@ class StudyRepository {
       totalCards: all.docs.length,
       dueToday: due,
       learnedCards: 0,
+    );
+  }
+
+  Future<void> recordStudyActivity({
+    required int reviewedCards,
+    required int durationSeconds,
+  }) async {
+    if (reviewedCards <= 0 && durationSeconds <= 0) return;
+
+    final now = DateTime.now();
+    final docId = DateFormat('yyyy-MM-dd').format(now);
+    final docRef = _activityCol.doc(docId);
+
+    await docRef.set({
+      'date': docId,
+      'reviewed_cards': FieldValue.increment(reviewedCards),
+      'duration_seconds': FieldValue.increment(durationSeconds),
+      'updated_at': now.toIso8601String(),
+      'last_study_at': now.toIso8601String(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<StudyProgressSummary> getStudyProgressSummary({
+    int dailyGoal = 20,
+  }) async {
+    final now = DateTime.now();
+    final todayId = DateFormat('yyyy-MM-dd').format(now);
+    final docs = await _activityCol
+        .orderBy(FieldPath.documentId, descending: true)
+        .limit(90)
+        .get();
+
+    int reviewedToday = 0;
+    int secondsSpentToday = 0;
+    int currentStreak = 0;
+    DateTime? lastStudyDate;
+
+    final docsById = {for (final doc in docs.docs) doc.id: doc.data()};
+    final todayData = docsById[todayId];
+
+    if (todayData != null) {
+      reviewedToday = (todayData['reviewed_cards'] as num?)?.toInt() ?? 0;
+      secondsSpentToday = (todayData['duration_seconds'] as num?)?.toInt() ?? 0;
+    }
+
+    if (docs.docs.isNotEmpty) {
+      lastStudyDate = DateTime.tryParse('${docs.docs.first.id}T00:00:00');
+    }
+
+    if (todayData != null && reviewedToday > 0) {
+      for (var offset = 0; offset < 90; offset++) {
+        final date = now.subtract(Duration(days: offset));
+        final dateId = DateFormat('yyyy-MM-dd').format(date);
+        final data = docsById[dateId];
+        final reviewed = (data?['reviewed_cards'] as num?)?.toInt() ?? 0;
+        if (reviewed <= 0) {
+          break;
+        }
+        currentStreak++;
+      }
+    }
+
+    return StudyProgressSummary(
+      reviewedToday: reviewedToday,
+      secondsSpentToday: secondsSpentToday,
+      currentStreak: currentStreak,
+      dailyGoal: dailyGoal,
+      lastStudyDate: lastStudyDate,
     );
   }
 }
