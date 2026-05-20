@@ -63,6 +63,7 @@ class DecksScreen extends ConsumerWidget {
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                           sliver: SliverToBoxAdapter(
                             child: progressAsync.when(
+                              skipLoadingOnRefresh: true,
                               data: (summary) => StudyProgressCard(
                                 summary: summary,
                                 goalOptions:
@@ -127,7 +128,7 @@ class DecksScreen extends ConsumerWidget {
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: crossAxisCount,
-                                childAspectRatio: kIsWeb ? 1.05 : 0.85,
+                                childAspectRatio: kIsWeb ? 1.05 : 1.6,
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
                               ),
@@ -173,9 +174,7 @@ class DecksScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: Padding(
-        padding: EdgeInsets.only(
-          bottom: !showAppBar && !kIsWeb ? 76 : 16,
-        ),
+        padding: const EdgeInsets.only(bottom: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,

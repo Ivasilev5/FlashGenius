@@ -65,13 +65,15 @@ class _AiTextScreenState extends ConsumerState<AiTextScreen> {
         deckId = deck.id;
       }
 
-      for (final c in cards) {
-        await deckRepo.createCard(
-          deckId,
-          question: c['question'] ?? '',
-          answer: c['answer'] ?? '',
-        );
-      }
+      await deckRepo.createCards(
+        deckId,
+        cards
+            .map((c) => (
+                  question: c['question'] ?? '',
+                  answer: c['answer'] ?? '',
+                ))
+            .toList(),
+      );
 
       ref.invalidate(decksListProvider);
       ref.invalidate(deckDetailProvider(deckId));
@@ -110,7 +112,8 @@ class _AiTextScreenState extends ConsumerState<AiTextScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, 24 + MediaQuery.viewPaddingOf(context).bottom),
         child: Center(
           child: ConstrainedBox(
             constraints:
@@ -168,6 +171,7 @@ class _AiTextScreenState extends ConsumerState<AiTextScreen> {
                 decksAsync.when(
                   data: (decks) => DropdownButtonFormField<String>(
                     initialValue: _selectedDeckId,
+                    isExpanded: true,
                     decoration:
                         const InputDecoration(labelText: 'Колода (необязательно)'),
                     items: [

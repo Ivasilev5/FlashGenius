@@ -194,17 +194,17 @@ class StudyRepository {
   }) async {
     final now = DateTime.now();
     final todayId = DateFormat('yyyy-MM-dd').format(now);
-    final docs = await _activityCol
-        .orderBy(FieldPath.documentId, descending: true)
-        .limit(90)
-        .get();
+    final rawDocs = await _activityCol.get();
+    final sortedDocs = rawDocs.docs.toList()
+      ..sort((a, b) => b.id.compareTo(a.id));
+    final recentDocs = sortedDocs.take(90).toList();
 
     int reviewedToday = 0;
     int secondsSpentToday = 0;
     int currentStreak = 0;
     DateTime? lastStudyDate;
 
-    final docsById = {for (final doc in docs.docs) doc.id: doc.data()};
+    final docsById = {for (final doc in recentDocs) doc.id: doc.data()};
     final todayData = docsById[todayId];
 
     if (todayData != null) {
@@ -212,8 +212,8 @@ class StudyRepository {
       secondsSpentToday = (todayData['duration_seconds'] as num?)?.toInt() ?? 0;
     }
 
-    if (docs.docs.isNotEmpty) {
-      lastStudyDate = DateTime.tryParse('${docs.docs.first.id}T00:00:00');
+    if (recentDocs.isNotEmpty) {
+      lastStudyDate = DateTime.tryParse('${recentDocs.first.id}T00:00:00');
     }
 
     if (todayData != null && reviewedToday > 0) {

@@ -51,14 +51,6 @@ class DeckDetailScreen extends ConsumerWidget {
             icon: const Icon(Icons.play_arrow, size: 20),
             label: const Text('Начать изучение'),
           ),
-          IconButton(
-            icon: const Icon(Icons.auto_awesome),
-            onPressed: () => context.push(AppRoutes.aiGenerate),
-          ),
-          IconButton(
-            icon: const Icon(Icons.text_snippet_outlined),
-            onPressed: () => context.push(AppRoutes.aiText),
-          ),
         ],
       ),
       body: deckAsync.when(

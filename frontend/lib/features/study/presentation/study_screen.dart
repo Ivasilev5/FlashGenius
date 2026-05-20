@@ -124,7 +124,9 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                         'Насколько хорошо вы помнили?',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                      DifficultyButtons(onSelected: _onDifficultySelected),
+                      DifficultyButtons(
+                        onSelected: _onDifficultySelected,
+                      ),
                     ],
                   ],
                 ),

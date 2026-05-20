@@ -29,10 +29,14 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
   void initState() {
     super.initState();
     ref.read(aiGenerateStateProvider.notifier).clear();
+    _topicController.addListener(_onTopicChanged);
   }
+
+  void _onTopicChanged() => setState(() {});
 
   @override
   void dispose() {
+    _topicController.removeListener(_onTopicChanged);
     _topicController.dispose();
     super.dispose();
   }
@@ -66,13 +70,15 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
         deckId = deck.id;
       }
 
-      for (final c in cards) {
-        await deckRepo.createCard(
-          deckId,
-          question: c['question'] ?? '',
-          answer: c['answer'] ?? '',
-        );
-      }
+      await deckRepo.createCards(
+        deckId,
+        cards
+            .map((c) => (
+                  question: c['question'] ?? '',
+                  answer: c['answer'] ?? '',
+                ))
+            .toList(),
+      );
 
       ref.invalidate(decksListProvider);
       ref.invalidate(deckDetailProvider(deckId));
@@ -110,7 +116,8 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, 24 + MediaQuery.viewPaddingOf(context).bottom),
         child: Center(
           child: ConstrainedBox(
             constraints:
@@ -234,7 +241,10 @@ class _AiGenerateScreenState extends ConsumerState<AiGenerateScreen> {
                         style: FilledButton.styleFrom(
                           minimumSize: const Size.fromHeight(50),
                         ),
-                        onPressed: aiState.status == 'starting' ? null : _generate,
+                        onPressed: (aiState.status == 'starting' ||
+                                _topicController.text.trim().isEmpty)
+                            ? null
+                            : _generate,
                         child: aiState.status == 'starting'
                             ? const SizedBox(
                                 height: 24,

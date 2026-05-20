@@ -155,44 +155,70 @@ class _HomeShellScreenState extends ConsumerState<HomeShellScreen> {
                 ),
       bottomNavigationBar: useRailNavigation
           ? null
-          : SafeArea(
-              minimum: const EdgeInsets.only(
-                left: kIsWeb ? 16 : 0,
-                right: kIsWeb ? 16 : 0,
-                bottom: kIsWeb ? 12 : 0,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                      maxWidth: kIsWeb ? 640 : double.infinity),
-                  child: NavigationBar(
-                    selectedIndex: _index,
-                    onDestinationSelected: (value) {
-                      setState(() {
-                        _index = value;
-                      });
-                    },
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.style_outlined),
-                        selectedIcon: Icon(Icons.style),
-                        label: 'Колоды',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.auto_awesome_outlined),
-                        selectedIcon: Icon(Icons.auto_awesome),
-                        label: 'ИИ',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.person_outline),
-                        selectedIcon: Icon(Icons.person),
-                        label: 'Профиль',
-                      ),
-                    ],
+          : kIsWeb
+              ? SafeArea(
+                  minimum: const EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    bottom: 12,
                   ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints:
+                          const BoxConstraints(maxWidth: 640),
+                      child: NavigationBar(
+                        selectedIndex: _index,
+                        onDestinationSelected: (value) {
+                          setState(() {
+                            _index = value;
+                          });
+                        },
+                        destinations: const [
+                          NavigationDestination(
+                            icon: Icon(Icons.style_outlined),
+                            selectedIcon: Icon(Icons.style),
+                            label: 'Колоды',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.auto_awesome_outlined),
+                            selectedIcon: Icon(Icons.auto_awesome),
+                            label: 'ИИ',
+                          ),
+                          NavigationDestination(
+                            icon: Icon(Icons.person_outline),
+                            selectedIcon: Icon(Icons.person),
+                            label: 'Профиль',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : NavigationBar(
+                  selectedIndex: _index,
+                  onDestinationSelected: (value) {
+                    setState(() {
+                      _index = value;
+                    });
+                  },
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.style_outlined),
+                      selectedIcon: Icon(Icons.style),
+                      label: 'Колоды',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.auto_awesome_outlined),
+                      selectedIcon: Icon(Icons.auto_awesome),
+                      label: 'ИИ',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person),
+                      label: 'Профиль',
+                    ),
+                  ],
                 ),
-              ),
-            ),
     );
   }
 }

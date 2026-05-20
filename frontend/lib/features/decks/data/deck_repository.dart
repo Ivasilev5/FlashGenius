@@ -211,6 +211,35 @@ class DeckRepository {
     );
   }
 
+  Future<void> createCards(
+    String deckId,
+    List<({String question, String answer})> cards,
+  ) async {
+    if (cards.isEmpty) return;
+    final now = DateTime.now().toIso8601String();
+    final cardsCol = _decksCol.doc(deckId).collection('cards');
+    final batch = _firestore.batch();
+    for (final card in cards) {
+      final ref = cardsCol.doc();
+      batch.set(ref, {
+        'question': card.question,
+        'answer': card.answer,
+        'question_image': null,
+        'answer_image': null,
+        'created_at': now,
+        'updated_at': now,
+        'repetition': 0,
+        'interval': 0,
+        'easiness': 2.5,
+        'due_date': now,
+      });
+    }
+    batch.update(_decksCol.doc(deckId), {
+      'card_count': FieldValue.increment(cards.length),
+    });
+    await batch.commit();
+  }
+
   Future<CardModel> updateCard(
     String deckId,
     String cardId, {

@@ -106,20 +106,20 @@ class _DifficultyButton extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(option.icon, style: const TextStyle(fontSize: 20)),
-                  const SizedBox(height: 4),
-                  Text(
-                    option.label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: option.color,
-                    ),
-                  ),
                   Text(
                     option.days,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: option.color,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    option.label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                       color: option.color.withValues(alpha: 204),
                     ),
                   ),
